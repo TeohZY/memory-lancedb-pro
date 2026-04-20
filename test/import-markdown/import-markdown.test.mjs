@@ -447,6 +447,40 @@ describe("import-markdown CLI", () => {
       }
       assert.ok(!threw, "import should not abort when encountering .md directory");
     });
+
+    // Regression test for flatMemoryDir path (workspace/memory/YYYY-MM-DD.md)
+    // This path was missing withFileTypes: true in cli.ts, causing .md directories
+    // to be pushed to mdFiles and later causing EISDIR errors during readFile
+    it("skips a .md directory in flatMemoryDir without aborting import", async () => {
+      const wsDir = await setupWorkspace("flatmd-dir-test");
+      // Create memory/ subdirectory for flat structure
+      await mkdir(join(wsDir, "memory"), { recursive: true });
+      // Create a real .md file
+      await writeFile(
+        join(wsDir, "memory", "2026-04-11.md"),
+        "- Real flat file entry\n",
+        "utf-8",
+      );
+      // Create a directory that looks like a .md file in flat memory path
+      const fakeDir = join(wsDir, "memory", "2026-04-12.md");
+      await mkdir(fakeDir, { recursive: true });
+
+      const ctx = { embedder: mockEmbedder, store: mockStore };
+      let threw = false;
+      try {
+        // This specifically tests the flatMemoryDir path (no workspaceGlob)
+        const { imported, skipped } = await runImportMarkdown(ctx, {
+          openclawHome: testWorkspaceDir,
+          workspaceGlob: "flatmd-dir-test",
+        });
+        assert.strictEqual(imported, 1, "should import the real .md file");
+        assert.strictEqual(skipped, 1, "should skip exactly 1 (.md directory entry)");
+      } catch (err) {
+        threw = true;
+        throw new Error(`Import aborted on .md directory in flatMemoryDir: ${err}`);
+      }
+      assert.ok(!threw, "import should not abort when encountering .md directory in flatMemoryDir");
+    });
   });
 });
 

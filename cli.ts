@@ -633,10 +633,10 @@ export async function runImportMarkdown(
     try {
       const stats = await fsPromises.stat(flatMemoryDir);
       if (stats.isDirectory()) {
-        const files = await fsPromises.readdir(flatMemoryDir);
+        const files = await fsPromises.readdir(flatMemoryDir, { withFileTypes: true });
         for (const f of files) {
-          if (f.endsWith(".md") && /^\d{4}-\d{2}-\d{2}/.test(f)) {
-            mdFiles.push({ filePath: path.join(flatMemoryDir, f), scope: workspaceScope || "global" });
+          if (f.isFile() && f.name.endsWith(".md") && /^\d{4}-\d{2}-\d{2}/.test(f.name)) {
+            mdFiles.push({ filePath: path.join(flatMemoryDir, f.name), scope: workspaceScope || "global" });
           }
         }
       }
